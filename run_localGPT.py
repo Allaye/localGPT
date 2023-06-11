@@ -13,14 +13,15 @@ from constants import CHROMA_SETTINGS, PERSIST_DIRECTORY, ROOT_DIRECTORY
 from transformers import GenerationConfig
 
 
-def load_model(device_type):
+def load_model(device_type, model_name):
     """
-    Select a model on huggingface.
-    If you are running this for the first time, it will download a model for you.
-    subsequent runs will use the model from the disk.
+    Loads a model from HuggingFace and returns a pipeline for text generation.
+    :param device_type: The device type to run the model on. (cpu, cuda, ipu, xpu, mkldnn, opengl, opencl, ideep)
+    :param model_name: The model name to load from HuggingFace. any Llama model should work
+    :return: A Huggingface pipeline for text generation.
     """
     # The code supports all huggingface models that ends with -HF or which have a .bin file in their HF repo.
-    model_id = "TheBloke/vicuna-7B-1.1-HF"
+    model_id = model_name  # "TheBloke/vicuna-7B-1.1-HF"
     # model_id = "TheBloke/guanaco-7B-HF"
     # model_id = 'NousResearch/Nous-Hermes-13b'
     logging.info(f'Loading Model: {model_id}, on : {device_type}')
@@ -44,7 +45,8 @@ def load_model(device_type):
 
     # load configuration from the model to avoid warnings.
     generation_config = GenerationConfig.from_pretrained(model_id)
-    # see here for details: https://huggingface.co/docs/transformers/main_classes/text_generation#transformers.GenerationConfig.from_pretrained.returns
+    # see here for details: https://huggingface.co/docs/transformers/main_classes/text_generation#transformers
+    # .GenerationConfig.from_pretrained.returns
 
     # create pipeline for text generation
     pipe = pipeline(
@@ -66,6 +68,14 @@ def load_model(device_type):
 
 # chose device typ to run on as well as to show source documents.
 @click.command()
+@click.option("--model_name",
+              default="TheBloke/vicuna-7B-1.1-HF",
+              type=str,
+              help="Model name to load from HuggingFace. (Default is TheBloke/vicuna-7B-1.1-HF)")
+@click.option("--embedding_model_name",
+              default="hkunlp/instructor-large",
+              type=str,
+              help="Embedding model name to load from HuggingFace. (Default is hkunlp/instructor-large)")
 @click.option(
     "--device_type",
     default="cuda",
@@ -88,8 +98,8 @@ def load_model(device_type):
     ),
     help="Show sources along with answers (Default is Fals)",
 )
-def main(device_type, show_sources):
-    '''
+def main(device_type, show_sources, model_name, embedding_model_name):
+    """
     This function implements the information retreival task.
 
 
@@ -98,13 +108,13 @@ def main(device_type, show_sources):
     3. Loads the local LLM using load_model function - You can now set different LLMs.
     4. Setup the Question Answer retreival chain.
     5. Question answers.
-    '''
+    """
 
     logging.info(f'Running on: {device_type}')
     logging.info(f'Display Source Documents set to: {show_sources}')
 
     embeddings = HuggingFaceInstructEmbeddings(
-        model_name="hkunlp/instructor-large", model_kwargs={"device": device_type}
+        model_name=embedding_model_name, model_kwargs={"device": device_type}
     )
 
     # uncomment the following line if you used HuggingFaceEmbeddings in the ingest.py
@@ -119,7 +129,7 @@ def main(device_type, show_sources):
     retriever = db.as_retriever()
 
     # load the LLM for generating Natural Language responses.
-    llm = load_model(device_type)
+    llm = load_model(device_type, model_name)
 
     qa = RetrievalQA.from_chain_type(
         llm=llm, chain_type="stuff", retriever=retriever, return_source_documents=True

@@ -16,6 +16,7 @@ from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
 
+
 def load_single_document(file_path: str) -> Document:
     # Loads a single document from a file path
     file_extension = os.path.splitext(file_path)[1]
@@ -26,8 +27,8 @@ def load_single_document(file_path: str) -> Document:
         raise ValueError("Document type is undefined")
     return loader.load()[0]
 
-def load_document_batch(filepaths):
 
+def load_document_batch(filepaths):
     logging.info("Loading document batch")
     # create a thread pool
     with ThreadPoolExecutor(len(filepaths)) as exe:
@@ -37,6 +38,7 @@ def load_document_batch(filepaths):
         data_list = [future.result() for future in futures]
         # return data and file paths
         return (data_list, filepaths)
+
 
 def load_documents(source_dir: str) -> List[Document]:
     # Loads all documents from the source documents directory
